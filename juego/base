@@ -36,73 +36,121 @@ moto_imagen = pygame.image.load("moto juego.jpg")
 moto_imagen = pygame.transform.scale(moto_imagen, (40, 60))
 clock = pygame.time.Clock()
 
+moto_x = ANCHO // 2 - 20
+moto_y = ALTO - 100
 
 
 
+# Dibuja pista fija (sin cambiar curvas)
+for y in range(horizonte, ALTO):
+    # mismo código para crear la carretera sin cambiar offset o curva
+    ...
+
+# Dibuja la moto en su posición actual
+pantalla.blit(moto_imagen, (moto_x, moto_y))
+
+# Calcular perspectiva y límites de la carretera en la posición de la moto (moto_y)
+perspectiva_moto = (moto_y - horizonte) / (ALTO - horizonte)
+ancho_carretera_moto = carretera_ancho * (1 + perspectiva_moto * 2)
+offset_carretera_moto = math.sin(curva) * 200 * (1 - perspectiva_moto)
+
+borde_izquierdo = ANCHO // 2 - ancho_carretera_moto // 2 + offset_carretera_moto
+borde_derecho = ANCHO // 2 + ancho_carretera_moto // 2 + offset_carretera_moto - moto_imagen.get_width()
+
+# Limitar la posición de la moto dentro de la carretera
+if moto_x < borde_izquierdo:
+    moto_x = borde_izquierdo
+if moto_x > borde_derecho: 
+    moto_x = borde_derecho
 
 
 # Bucle principal
+game_over = False
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+        if game_over and event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = event.pos
+            if reiniciar_rect.collidepoint(mouse_pos):
+                # Reiniciar variables
+                game_over = False
+                moto_x = ANCHO // 2 - 20
+                # Posicionar el auto fuera de pantalla para empezar de nuevo
+                auto.top = -100
+
+    if not game_over:
+        teclas = pygame.key.get_pressed()
+        if teclas[pygame.K_UP]:
+            velocidad += 0.2
+        elif teclas[pygame.K_DOWN]:
+             velocidad -= 0.2
+        else:
+         velocidad *= 0.98
 
 
-    # Controles
-    teclas = pygame.key.get_pressed()
-    if teclas[pygame.K_UP]:
-        velocidad += 0.2
-    elif teclas[pygame.K_DOWN]:
-        velocidad -= 0.2
-    else:
-        velocidad *= 0.98  # fricción
+        velocidad = max(0, min(velocidad, velocidad_max))
+        
+        if teclas[pygame.K_LEFT]:
+            moto_x -= 5
+        if teclas[pygame.K_RIGHT]:
+            moto_x += 5
 
+        # Limitar moto_x para que no se salga
+        perspectiva_moto = (moto_y - horizonte) / (ALTO - horizonte)
+        ancho_carretera_moto = carretera_ancho * (1 + perspectiva_moto * 2)
+        offset_carretera_moto = math.sin(curva) * 200 * (1 - perspectiva_moto)
+        borde_izquierdo = ANCHO // 2 - ancho_carretera_moto // 2 + offset_carretera_moto
+        borde_derecho = ANCHO // 2 + ancho_carretera_moto // 2 + offset_carretera_moto - moto_imagen.get_width()
+        moto_x = max(borde_izquierdo, min(moto_x, borde_derecho))
 
-    velocidad = max(0, min(velocidad, velocidad_max))
+        auto.y += velocidad * 2  # multiplicador para ajustar velocidad visual
 
+# Reposicionar auto si sale de pantalla
+        if auto.top > ALTO:
+         auto.top = -60  # vuelve a la parte superior
+    # Puedes variar auto.x aquí para más dinámica
 
-    if teclas[pygame.K_LEFT]:
-        pos_x -= 5
-        curva -= 0.05
-    if teclas[pygame.K_RIGHT]:
-        pos_x += 5
-        curva += 0.05
+        # Detectar colisión moto-auto
+        moto_rect = pygame.Rect(moto_x, moto_y, moto_imagen.get_width(), moto_imagen.get_height())
+        if moto_rect.colliderect(auto):
+            game_over = True
 
-
-    # Dibujar fondo
+    # Dibujar fondo y carretera aquí (igual que antes)
     pantalla.fill(VERDE)
-
-
-    # Dibujar carretera (pseudo-3D)
     for y in range(horizonte, ALTO):
         perspectiva = (y - horizonte) / (ALTO - horizonte)
         ancho = carretera_ancho * (1 + perspectiva * 2)
         offset = math.sin(curva) * 200 * (1 - perspectiva)
         x1 = ANCHO // 2 - ancho // 2 + offset
         x2 = ANCHO // 2 + ancho // 2 + offset
-
-
         color = GRIS if (y // 10) % 2 == 0 else (60, 60, 60)
         pygame.draw.line(pantalla, color, (x1, y), (x2, y))
-
-
-        # Bordes de la carretera
         pygame.draw.line(pantalla, BLANCO, (x1, y), (x1 + 3, y))
         pygame.draw.line(pantalla, BLANCO, (x2, y), (x2 - 3, y))
 
-
-    # Dibujar la moto
-    pantalla.blit(moto_imagen, moto.topleft)
+    # Dibujar moto y auto
+    pantalla.blit(moto_imagen, (moto_x, moto_y))
     pantalla.blit(auto_imagen, auto.topleft)
 
+    if game_over:
+        fuente_grande = pygame.font.SysFont(None, 72)
+        texto_game_over = fuente_grande.render("GAME OVER", True, ROJO)
+        texto_rect = texto_game_over.get_rect(center=(ANCHO//2, ALTO//2 - 50))
+        pantalla.blit(texto_game_over, texto_rect)
 
+        fuente_pequena = pygame.font.SysFont(None, 48)
+        reiniciar_texto = fuente_pequena.render("REINICIAR", True, BLANCO)
+        reiniciar_rect = reiniciar_texto.get_rect(center=(ANCHO//2, ALTO//2 + 50))
+        pygame.draw.rect(pantalla, GRIS, reiniciar_rect.inflate(20, 10))
+        pantalla.blit(reiniciar_texto, reiniciar_rect)
 
-    # Mostrar velocidad
-    fuente = pygame.font.SysFont(None, 36)
-    texto = fuente.render(f"Velocidad: {int(velocidad*10)} km/h", True, BLANCO)
-    pantalla.blit(texto, (20, 20))
-
+    else:
+        fuente = pygame.font.SysFont(None, 36)
+        texto = fuente.render(f"Velocidad: {int(velocidad*10)} km/h", True, BLANCO)
+        pantalla.blit(texto, (20, 20))
 
     pygame.display.flip()
     clock.tick(60)
