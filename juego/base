@@ -1,0 +1,108 @@
+import pygame
+import math
+import sys
+
+
+# Inicializar pygame
+pygame.init()
+ANCHO, ALTO = 800, 600
+pantalla = pygame.display.set_mode((ANCHO, ALTO))
+pygame.display.set_caption("Moto Retro 3D - Demo")
+
+
+# Colores
+VERDE = (0, 200, 0)
+GRIS = (50, 50, 50)
+BLANCO = (255, 255, 255)
+ROJO = (255, 0, 0)
+
+
+# Variables del juego
+velocidad = 0
+velocidad_max = 20
+pos_x = 0  # desplazamiento horizontal
+curva = 0
+carretera_ancho = 300
+horizonte = ALTO // 3
+
+moto = pygame.Rect(ANCHO//2 - 20, ALTO - 100, 40, 60)
+auto_imagen = pygame.image.load("auto.jpg")
+auto_imagen = pygame.transform.scale(auto_imagen, (40, 60))
+# Moto (simple rectángulo por ahora)
+# Cargar la imagen (pon la imagen descargada en la misma carpeta que este script)
+auto = pygame.Rect(ANCHO//2 - 20, ALTO - 200, 40, 60)
+moto_imagen = pygame.image.load("moto juego.jpg")
+# Escalar la imagen al tamaño del rectángulo moto
+moto_imagen = pygame.transform.scale(moto_imagen, (40, 60))
+clock = pygame.time.Clock()
+
+
+
+
+
+
+# Bucle principal
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+
+    # Controles
+    teclas = pygame.key.get_pressed()
+    if teclas[pygame.K_UP]:
+        velocidad += 0.2
+    elif teclas[pygame.K_DOWN]:
+        velocidad -= 0.2
+    else:
+        velocidad *= 0.98  # fricción
+
+
+    velocidad = max(0, min(velocidad, velocidad_max))
+
+
+    if teclas[pygame.K_LEFT]:
+        pos_x -= 5
+        curva -= 0.05
+    if teclas[pygame.K_RIGHT]:
+        pos_x += 5
+        curva += 0.05
+
+
+    # Dibujar fondo
+    pantalla.fill(VERDE)
+
+
+    # Dibujar carretera (pseudo-3D)
+    for y in range(horizonte, ALTO):
+        perspectiva = (y - horizonte) / (ALTO - horizonte)
+        ancho = carretera_ancho * (1 + perspectiva * 2)
+        offset = math.sin(curva) * 200 * (1 - perspectiva)
+        x1 = ANCHO // 2 - ancho // 2 + offset
+        x2 = ANCHO // 2 + ancho // 2 + offset
+
+
+        color = GRIS if (y // 10) % 2 == 0 else (60, 60, 60)
+        pygame.draw.line(pantalla, color, (x1, y), (x2, y))
+
+
+        # Bordes de la carretera
+        pygame.draw.line(pantalla, BLANCO, (x1, y), (x1 + 3, y))
+        pygame.draw.line(pantalla, BLANCO, (x2, y), (x2 - 3, y))
+
+
+    # Dibujar la moto
+    pantalla.blit(moto_imagen, moto.topleft)
+    pantalla.blit(auto_imagen, auto.topleft)
+
+
+
+    # Mostrar velocidad
+    fuente = pygame.font.SysFont(None, 36)
+    texto = fuente.render(f"Velocidad: {int(velocidad*10)} km/h", True, BLANCO)
+    pantalla.blit(texto, (20, 20))
+
+
+    pygame.display.flip()
+    clock.tick(60)
